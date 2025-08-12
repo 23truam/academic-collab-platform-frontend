@@ -1,0 +1,298 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.form {
+    margin-bottom: 20px;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+}
+
+.profile, .related-authors, .publications {
+    flex: 1;
+    text-align: center;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+}
+
+.profile::before, .related-authors::before, .publications::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    z-index: -1;
+    border-radius: 8px;
+    background: linear-gradient(45deg, #ff6b6b, #f0f2f5, #1890ff);
+    background-size: 200% 200%;
+    animation: gradient-border 3s linear infinite;
+}
+
+@keyframes gradient-border {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
+.profile:hover, .related-authors:hover, .publications:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transform: translateY(-5px);
+}
+
+.avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+}
+
+.profile-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.profile-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+}
+
+.profile-title {
+    color: #666;
+    margin: 0 0 15px 0;
+}
+
+.profile-stats {
+    display: flex;
+    gap: 15px;
+    margin-top: 5px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f0f7ff;
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+.stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1890ff;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.profile-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-details h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+    color: #333;
+}
+
+.research-tags, .collaborators {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.research-tag {
+    background-color: #e6f7ff;
+    color: #1890ff;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+}
+
+.collaborator-tag {
+    background-color: #f0f0f0;
+    color: #333;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.collaborator-tag:hover {
+    background-color: #1890ff;
+    color: white;
+}
+
+.bio {
+    color: #666;
+    line-height: 1.5;
+    text-align: justify;
+}
+
+.education-list, .awards-list {
+    list-style-type: none;
+    padding-left: 5px;
+    margin: 0;
+}
+
+.education-list li, .awards-list li {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 8px;
+    color: #555;
+    line-height: 1.4;
+}
+
+.education-list li:before, .awards-list li:before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #1890ff;
+    font-weight: bold;
+}
+
+.contact-info {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-top: 5px;
+}
+
+.contact-info p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.contact-info a {
+    color: #1890ff;
+    text-decoration: none;
+}
+
+.contact-info a:hover {
+    text-decoration: underline;
+}
+
+.mt-4 {
+    margin-top: 16px;
+}
+
+.publications {
+    flex: 1;
+}
+
+.authors {
+    margin-top: 8px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.author-link {
+    color: #1890ff;
+    cursor: pointer;
+    margin-right: 8px;
+}
+
+.author-link:hover {
+    text-decoration: underline;
+}
+
+.chart-container {
+    margin-bottom: 20px;
+}
+
+.papers {
+    margin-top: 20px;
+}
+
+.select {
+    padding: 10px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.button:hover {
+    background-color: #0056b3;
+}
+
+.chart-title {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.related-authors h3 {
+    margin-bottom: 10px;
+    color: #007bff;
+}
+
+.related-authors ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.related-authors li {
+    padding: 8px;
+    border-bottom: 1px solid #ccc;
+    transition: background-color 0.3s;
+}
+
+.related-authors li:hover {
+    background-color: #e9f5ff;
+}
+
+@media (max-width: 1200px) {
+    .layout {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
