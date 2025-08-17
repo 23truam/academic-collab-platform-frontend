@@ -134,6 +134,26 @@ export const chatService = {
     } catch (error: any) {
       throw new Error(error.response?.data?.message || '设置在线状态失败');
     }
+  },
+
+  // 设置当前活跃会话对端
+  async setActiveSession(peerUserId: number): Promise<any> {
+    try {
+      const response = await chatApi.post(`/chat/active-session/${peerUserId}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || '设置活跃会话失败');
+    }
+  },
+
+  // 清除当前活跃会话
+  async clearActiveSession(): Promise<any> {
+    try {
+      const response = await chatApi.delete('/chat/active-session');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || '清除活跃会话失败');
+    }
   }
 };
 

@@ -18,6 +18,8 @@ const ChatPage: React.FC = () => {
   const [loginTime, setLoginTime] = useState<number>(() => Date.now());
   const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>([]);
   const [recentMessages, setRecentMessages] = useState<ChatMessage[]>([]);
+  // 记录当前活跃会话对端ID，避免闭包导致的旧 selectedUser
+  const activePeerRef = useRef<number | null>(null);
 
   // 获取当前登录用户ID
   const currentUserId = (() => {
@@ -86,8 +88,11 @@ const ChatPage: React.FC = () => {
               if (message.createTime && prev.some(m => m.createTime === message.createTime && m.content === message.content)) return prev;
               return [...prev, message];
             });
-            // 新消息到达时，主动拉取unreadMap，双重保障
-            getUnreadMap().then(res => setUnreadMap(res));
+            // 新消息到达时：若正在与该发送方聊天，则不拉取未读数（并可直接标记为已读）
+            const activePeer = activePeerRef.current;
+            if (activePeer && message.senderId === activePeer) {
+              markMessagesAsRead(activePeer).catch(() => {});
+            }
           })
           .then((connected) => setWsConnected(connected))
           .catch((error) => {
@@ -113,6 +118,13 @@ const ChatPage: React.FC = () => {
       // 不再自动调用authService.logout()
     };
   }, [currentUserId]);
+
+  // 组件卸载时清除活跃会话
+  useEffect(() => {
+    return () => {
+      chatService.clearActiveSession().catch(() => {});
+    };
+  }, []);
 
   // 获取聊天历史并标记为已读（带缓存）
   useEffect(() => {
@@ -157,7 +169,9 @@ const ChatPage: React.FC = () => {
     };
 
     if (wsConnected) {
-      websocketService.sendMessage(message);
+      // 生成客户端幂等ID（UUID）
+      const clientMsgId = (crypto && 'randomUUID' in crypto) ? (crypto as any).randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      websocketService.sendMessage({ ...message, clientMsgId } as any);
       // 本地立即添加到 recentMessages
       setRecentMessages(prev => [
         ...prev,
@@ -245,6 +259,8 @@ const ChatPage: React.FC = () => {
                     selected={selectedUser?.userId === user.userId}
                     onClick={() => {
                       setSelectedUser(user);
+                      activePeerRef.current = user.userId;
+                      chatService.setActiveSession(user.userId).catch(() => {});
                     }}
                   />
                 );
