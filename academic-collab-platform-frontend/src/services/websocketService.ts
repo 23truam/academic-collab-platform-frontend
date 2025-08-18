@@ -52,8 +52,15 @@ class WebSocketService {
             console.log('WebSocket连接成功');
             // 订阅个人消息
             this.stompClient.subscribe('/user/queue/messages', (message: any) => {
-              const receivedMessage = JSON.parse(message.body);
-              onMessageReceived(receivedMessage);
+              try {
+                const receivedMessage = JSON.parse(message.body);
+                // 简单校验字段，避免不完整消息导致前端状态异常
+                if (receivedMessage && typeof receivedMessage.senderId === 'number' && typeof receivedMessage.receiverId === 'number') {
+                  onMessageReceived(receivedMessage);
+                }
+              } catch (e) {
+                console.error('[WebSocket] 解析消息失败', e);
+              }
             });
             // 订阅用户状态变更
             this.stompClient.subscribe('/topic/user-status', (message: any) => {

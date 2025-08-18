@@ -82,15 +82,16 @@ const ChatPage: React.FC = () => {
         }
         websocketService
           .connect(currentUserId, (message) => {
-            setRecentMessages(prev => {
-              // 消息去重
-              if (message.id && prev.some(m => m.id === message.id)) return prev;
-              if (message.createTime && prev.some(m => m.createTime === message.createTime && m.content === message.content)) return prev;
-              return [...prev, message];
-            });
-            // 新消息到达时：若正在与该发送方聊天，则不拉取未读数（并可直接标记为已读）
+            // 仅当消息属于当前活跃会话时才追加到当前会话的 recentMessages
             const activePeer = activePeerRef.current;
-            if (activePeer && message.senderId === activePeer) {
+            if (activePeer && (message.senderId === activePeer || message.receiverId === activePeer)) {
+              setRecentMessages(prev => {
+                // 消息去重
+                if (message.id && prev.some(m => m.id === message.id)) return prev;
+                if (message.createTime && prev.some(m => m.createTime === message.createTime && m.content === message.content)) return prev;
+                return [...prev, message];
+              });
+              // 新消息到达且属于当前会话：直接标记为已读
               markMessagesAsRead(activePeer).catch(() => {});
             }
           })
@@ -294,7 +295,10 @@ const ChatPage: React.FC = () => {
                 <div className="loading">加载中...</div>
               ) : (
                 <div className="messages-list">
-                  {historyMessages.filter(message => message.messageType !== 'SYSTEM').map((message) => (
+                  {historyMessages
+                    .filter(message => message.messageType !== 'SYSTEM')
+                    .filter(message => !!selectedUser && (message.senderId === selectedUser.userId || message.receiverId === selectedUser.userId))
+                    .map((message) => (
                     <div
                       key={message.id ?? message.createTime ?? Math.random()}
                       className={`message ${message.senderId === currentUserId ? 'sent' : 'received'}`}
@@ -315,7 +319,10 @@ const ChatPage: React.FC = () => {
                       <div className="divider-line"></div>
                     </div>
                   )}
-                  {recentMessages.filter(message => message.messageType !== 'SYSTEM').map((message) => (
+                  {recentMessages
+                    .filter(message => message.messageType !== 'SYSTEM')
+                    .filter(message => !!selectedUser && (message.senderId === selectedUser.userId || message.receiverId === selectedUser.userId))
+                    .map((message) => (
                     <div
                       key={message.id ?? message.createTime ?? Math.random()}
                       className={`message ${message.senderId === currentUserId ? 'sent' : 'received'}`}
