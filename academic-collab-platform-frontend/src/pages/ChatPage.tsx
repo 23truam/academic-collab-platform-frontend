@@ -82,8 +82,8 @@ const ChatPage: React.FC = () => {
         }
         websocketService
           .connect(currentUserId, (message) => {
-            // 仅当消息属于当前活跃会话时才追加到当前会话的 recentMessages
             const activePeer = activePeerRef.current;
+            // 属于当前会话的消息（收或发）才渲染到当前会话
             if (activePeer && (message.senderId === activePeer || message.receiverId === activePeer)) {
               setRecentMessages(prev => {
                 // 消息去重
@@ -91,7 +91,9 @@ const ChatPage: React.FC = () => {
                 if (message.createTime && prev.some(m => m.createTime === message.createTime && m.content === message.content)) return prev;
                 return [...prev, message];
               });
-              // 新消息到达且属于当前会话：直接标记为已读
+            }
+            // 仅在“收到来自当前会话对端”的消息时标记为已读（避免误判）
+            if (activePeer && message.senderId === activePeer) {
               markMessagesAsRead(activePeer).catch(() => {});
             }
           })
@@ -133,9 +135,10 @@ const ChatPage: React.FC = () => {
       const fetchChatHistory = async () => {
         try {
           setLoading(true);
-          const response = await chatService.getChatHistoryWithCache(selectedUser.userId, 50, loginTime);
+          const response = await chatService.getChatHistoryWithCache(selectedUser.userId, 200, loginTime);
           if (response.success) {
             const data = response.data;
+            console.log('cacheHit?', data?.cacheHit);
             setHistoryMessages((data.historyMessages || []).reverse());
             setRecentMessages((data.recentMessages || []).reverse());
             setHasHistoryDivider(data.hasHistoryDivider || false);
