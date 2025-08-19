@@ -31,6 +31,10 @@ const LoginPage: React.FC<{ setAuthenticated: (authenticated: boolean) => void }
             if (!email.trim() && username.trim()) loginData.username = username.trim();
             const response = await authService.login(loginData);
             if (response.success) {
+                // 记录登录时间，用于聊天记录分割
+                const loginTime = Date.now();
+                localStorage.setItem('loginTime', loginTime.toString());
+                
                 // 登录成功后设置为在线
                 await chatService.setOnlineStatus(true);
                 // 登录成功后全局建立WebSocket连接

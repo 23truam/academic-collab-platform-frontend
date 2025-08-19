@@ -15,7 +15,18 @@ const ChatPage: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [unreadMap, setUnreadMap] = useState<{[userId: string]: number}>({});
   const [hasHistoryDivider, setHasHistoryDivider] = useState(false);
-  const [loginTime, setLoginTime] = useState<number>(() => Date.now());
+  // 获取用户真正的登录时间，而不是进入聊天页面的时间
+  const [loginTime, setLoginTime] = useState<number>(() => {
+    // 尝试从localStorage获取登录时间
+    const storedLoginTime = localStorage.getItem('loginTime');
+    if (storedLoginTime) {
+      return parseInt(storedLoginTime, 10);
+    }
+    // 如果没有存储的登录时间，使用当前时间作为默认值
+    const currentTime = Date.now();
+    localStorage.setItem('loginTime', currentTime.toString());
+    return currentTime;
+  });
   const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>([]);
   const [recentMessages, setRecentMessages] = useState<ChatMessage[]>([]);
   // 记录当前活跃会话对端ID，避免闭包导致的旧 selectedUser
