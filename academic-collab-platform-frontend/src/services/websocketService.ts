@@ -56,10 +56,27 @@ class WebSocketService {
                 const receivedMessage = JSON.parse(message.body);
                 // 简单校验字段，避免不完整消息导致前端状态异常
                 if (receivedMessage && typeof receivedMessage.senderId === 'number' && typeof receivedMessage.receiverId === 'number') {
+                  console.log('[WebSocket] 收到普通消息:', receivedMessage);
                   onMessageReceived(receivedMessage);
                 }
               } catch (e) {
-                console.error('[WebSocket] 解析消息失败', e);
+                console.error('[WebSocket] 解析普通消息失败', e);
+              }
+            });
+            
+            // 🆕 订阅离线消息队列
+            this.stompClient.subscribe('/user/queue/offline-messages', (message: any) => {
+              try {
+                const receivedMessage = JSON.parse(message.body);
+                // 简单校验字段，避免不完整消息导致前端状态异常
+                if (receivedMessage && typeof receivedMessage.senderId === 'number' && typeof receivedMessage.receiverId === 'number') {
+                  console.log('[WebSocket] 收到离线消息:', receivedMessage);
+                  // 🎯 标记为离线消息，前端可以特殊处理（比如显示不同的样式）
+                  receivedMessage.isOfflineMessage = true;
+                  onMessageReceived(receivedMessage);
+                }
+              } catch (e) {
+                console.error('[WebSocket] 解析离线消息失败', e);
               }
             });
             // 订阅用户状态变更

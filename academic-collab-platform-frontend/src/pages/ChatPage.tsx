@@ -339,12 +339,18 @@ const ChatPage: React.FC = () => {
                     .map((message) => (
                     <div
                       key={message.id ?? message.createTime ?? Math.random()}
-                      className={`message ${message.senderId === currentUserId ? 'sent' : 'received'}`}
+                      className={`message ${message.senderId === currentUserId ? 'sent' : 'received'} ${message.isOfflineMessage ? 'offline-message' : ''}`}
                     >
                       <div className="message-content">
-                        <div className="message-text">{message.content}</div>
+                        <div className="message-text">
+                          {message.content}
+                          {message.isOfflineMessage && (
+                            <span className="offline-message-indicator">离线消息</span>
+                          )}
+                        </div>
                         <div className="message-time">
                           {message.createTime ? new Date(message.createTime).toLocaleString() : ''}
+                          {message.isOfflineMessage && ' (离线时收到)'}
                         </div>
                       </div>
                     </div>

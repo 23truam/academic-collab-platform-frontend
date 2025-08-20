@@ -12,6 +12,7 @@ export interface ChatMessage {
   messageType: string;
   isRead?: boolean;
   createTime?: string;
+  isOfflineMessage?: boolean; // 🆕 标识是否为离线消息
 }
 
 export interface ChatUser {
