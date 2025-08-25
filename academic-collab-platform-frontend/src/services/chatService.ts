@@ -44,6 +44,19 @@ chatApi.interceptors.request.use(
 );
 
 export const chatService = {
+  // 发送消息
+  async sendMessage(message: ChatMessage): Promise<any> {
+    try {
+      const response = await chatApi.post('/chat/send', {
+        receiverId: message.receiverId,
+        content: message.content,
+        messageType: message.messageType
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || '发送消息失败');
+    }
+  },
 
   // 获取聊天历史
   async getChatHistory(userId: number, limit: number = 50): Promise<any> {
