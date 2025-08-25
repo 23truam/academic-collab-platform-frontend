@@ -161,9 +161,13 @@ const ChatPage: React.FC = () => {
         }
       };
       fetchChatHistory();
-      markMessagesAsRead(selectedUser.userId).then(() => {
-        getUnreadMap().then(setUnreadMap);
-      });
+      // 🔧 修复数据丢失问题：延迟标记已读，让用户先看到消息
+      // 在用户进入聊天页面3秒后再标记为已读，确保用户看到了离线消息
+      setTimeout(() => {
+        markMessagesAsRead(selectedUser.userId).then(() => {
+          getUnreadMap().then(setUnreadMap);
+        });
+      }, 3000); // 3秒延迟
     }
   }, [selectedUser, loginTime]);
 
