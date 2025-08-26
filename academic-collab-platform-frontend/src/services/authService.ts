@@ -68,7 +68,8 @@ export const authService = {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify({
           email: data.email,
-          userId: data.userId
+          userId: data.userId,
+          loginTime: Date.now() // 🔧 保存登录时间
         }));
       }
       

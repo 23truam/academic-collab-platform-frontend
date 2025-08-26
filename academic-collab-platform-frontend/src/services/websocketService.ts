@@ -98,7 +98,12 @@ class WebSocketService {
               } catch {
                 map = {};
               }
-              console.log('收到unreadMap', map);
+              console.log('📨 [WebSocket] 收到unreadMap更新', {
+                map,
+                timestamp: new Date().toLocaleTimeString(),
+                keys: Object.keys(map),
+                values: Object.values(map)
+              });
               this.unreadMapCallbacks.forEach(cb => cb(map));
             });
             // 发送用户加入消息

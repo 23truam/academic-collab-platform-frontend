@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { chatService, ChatMessage, ChatUser, getUnreadCount, markMessagesAsRead, getUnreadMap } from '../services/chatService';
+import { chatService, ChatMessage, ChatUser, markMessagesAsRead, getUnreadMap } from '../services/chatService';
 import { websocketService } from '../services/websocketService';
-import { authService } from '../services/authService';
+// import { authService } from '../services/authService'; // 如果需要的话可以取消注释
 import { beaconLogout } from '../utils/beaconLogout';
 import './ChatPage.css';
 
@@ -12,14 +12,56 @@ const ChatPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+  // const [unreadCount, setUnreadCount] = useState<number>(0); // 如果需要的话可以取消注释
   const [unreadMap, setUnreadMap] = useState<{[userId: string]: number}>({});
-  const [hasHistoryDivider, setHasHistoryDivider] = useState(false);
-  const [loginTime, setLoginTime] = useState<number>(() => Date.now());
+  // const [hasHistoryDivider, setHasHistoryDivider] = useState(false); // 如果需要的话可以取消注释
+  const [loginTime] = useState<number>(() => {
+    // 🔧 使用用户真正的登录时间作为分割点
+    // 登录前的消息 = 历史消息，登录后的消息 = 新消息
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const userObj = JSON.parse(userStr);
+        if (userObj.loginTime) {
+          console.log('🕰️ [ChatPage] 使用用户登录时间:', new Date(userObj.loginTime));
+          return userObj.loginTime;
+        }
+      } catch (e) {
+        console.error('解析用户信息失败:', e);
+      }
+    }
+    
+    // 如果没有登录时间，使用当前时间减去1小时，这样能看到一些历史消息
+    const fallbackTime = Date.now() - (60 * 60 * 1000); // 1小时前
+    console.log('🕰️ [ChatPage] 使用fallback时间（1小时前）:', new Date(fallbackTime));
+    return fallbackTime;
+  });
   const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>([]);
   const [recentMessages, setRecentMessages] = useState<ChatMessage[]>([]);
   // 记录当前活跃会话对端ID，避免闭包导致的旧 selectedUser
   const activePeerRef = useRef<number | null>(null);
+
+  // 🕰️ 统一时间格式化函数 - 显示北京时间
+  const formatMessageTime = (timeString: string): string => {
+    try {
+      const date = new Date(timeString);
+      // 确保显示北京时间 (UTC+8)
+      const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'Asia/Shanghai', // 强制使用北京时间
+        hour12: false // 使用24小时格式
+      };
+      return date.toLocaleString('zh-CN', options);
+    } catch (error) {
+      console.error('时间格式化错误:', error);
+      return timeString;
+    }
+  };
 
   // 获取当前登录用户ID
   const currentUserId = (() => {
@@ -62,13 +104,18 @@ const ChatPage: React.FC = () => {
 
   // 获取全局未读消息数和每个用户的未读消息数map，改为WebSocket推送
   useEffect(() => {
-    websocketService.onUnreadCount(setUnreadCount);
+    // websocketService.onUnreadCount(setUnreadCount); // 如果需要未读数量功能可以取消注释
     websocketService.onUnreadMap(setUnreadMap);
   }, []);
 
   // 在unreadMap变化时打印一次
   useEffect(() => {
-    console.log('unreadMap 变化:', unreadMap);
+    console.log('📊 [ChatPage] unreadMap 变化:', {
+      unreadMap,
+      timestamp: new Date().toLocaleTimeString(),
+      selectedUserId: selectedUser?.userId,
+      activePeer: activePeerRef.current
+    });
   }, [unreadMap]);
 
   // 连接WebSocket - 延迟连接，避免页面加载时就连接
@@ -83,19 +130,67 @@ const ChatPage: React.FC = () => {
         websocketService
           .connect(currentUserId, (message) => {
             const activePeer = activePeerRef.current;
-            // 属于当前会话的消息（收或发）才渲染到当前会话
-            if (activePeer && (message.senderId === activePeer || message.receiverId === activePeer)) {
+            console.log('🔔 [ChatPage] 收到WebSocket消息详情:', {
+              messageId: message.id,
+              senderId: message.senderId,
+              receiverId: message.receiverId,
+              content: message.content,
+              currentUserId,
+              activePeer,
+              timestamp: new Date().toLocaleTimeString()
+            });
+            
+            // 🔧 修复消息接收逻辑 - 更精确的匹配条件
+            const shouldAddToRecentMessages = activePeer && (
+              (message.senderId === activePeer && message.receiverId === currentUserId) ||
+              (message.senderId === currentUserId && message.receiverId === activePeer)
+            );
+            
+            console.log('🔍 [ChatPage] 消息匹配检查:', {
+              activePeer,
+              messageSenderId: message.senderId,
+              messageReceiverId: message.receiverId,
+              currentUserId,
+              shouldAdd: shouldAddToRecentMessages,
+              matchReason: shouldAddToRecentMessages ? 
+                (message.senderId === activePeer ? '收到来自当前聊天对象的消息' : '自己发给当前聊天对象的消息') :
+                '不匹配当前聊天会话'
+            });
+            
+            if (shouldAddToRecentMessages) {
               setRecentMessages(prev => {
                 // 消息去重
-                if (message.id && prev.some(m => m.id === message.id)) return prev;
-                if (message.createTime && prev.some(m => m.createTime === message.createTime && m.content === message.content)) return prev;
+                if (message.id && prev.some(m => m.id === message.id)) {
+                  console.log('🚫 [ChatPage] 消息去重-ID重复:', message.id);
+                  return prev;
+                }
+                if (message.createTime && prev.some(m => m.createTime === message.createTime && m.content === message.content)) {
+                  console.log('🚫 [ChatPage] 消息去重-时间内容重复:', message.createTime, message.content);
+                  return prev;
+                }
+                console.log('✅ [ChatPage] 添加新消息到recentMessages:', {
+                  messageId: message.id,
+                  content: message.content,
+                  currentCount: prev.length
+                });
                 return [...prev, message];
               });
+            } else {
+              console.log('🚫 [ChatPage] 消息不匹配当前会话，不添加到recentMessages');
             }
-            // 仅在“收到来自当前会话对端”的消息时标记为已读（避免误判）
-            if (activePeer && message.senderId === activePeer) {
-              markMessagesAsRead(activePeer).catch(() => {});
-            }
+            
+            // 🔧 完全禁用WebSocket自动标记已读，只通过手动点击用户来标记
+            console.log('📬 [ChatPage] WebSocket自动标记已读已禁用');
+            
+            // if (activePeer && message.senderId === activePeer) {
+            //   console.log('📖 [ChatPage] 自动标记已读: 收到来自当前会话对端的消息', {
+            //     activePeer,
+            //     messageSenderId: message.senderId,
+            //     currentUserId,
+            //     messageContent: message.content
+            //   });
+            //   markMessagesAsRead(activePeer).catch(() => {});
+            // }
           })
           .then((connected) => setWsConnected(connected))
           .catch((error) => {
@@ -135,13 +230,47 @@ const ChatPage: React.FC = () => {
       const fetchChatHistory = async () => {
         try {
           setLoading(true);
+          console.log('🔍 [ChatPage] 发送请求参数:', { 
+            userId: selectedUser.userId, 
+            limit: 200, 
+            loginTime,
+            loginTimeDate: new Date(loginTime),
+            currentTimeForReference: new Date(),
+            timeDiffHours: (Date.now() - loginTime) / (1000 * 60 * 60)
+          });
+          // 🔧 使用用户登录时间作为分割点
           const response = await chatService.getChatHistoryWithCache(selectedUser.userId, 200, loginTime);
           if (response.success) {
             const data = response.data;
-            console.log('cacheHit?', data?.cacheHit);
-            setHistoryMessages((data.historyMessages || []).reverse());
-            setRecentMessages((data.recentMessages || []).reverse());
-            setHasHistoryDivider(data.hasHistoryDivider || false);
+            console.log('📋 [ChatPage] 后端返回数据:', {
+              historyCount: data.historyMessages?.length || 0,
+              recentCount: data.recentMessages?.length || 0,
+              hasHistoryDivider: data.hasHistoryDivider,
+              cacheHit: data.cacheHit,
+              serverLoginTime: data.loginTime,
+              shouldShowDivider: (data.historyMessages?.length || 0) > 0
+            });
+            console.log('📋 [ChatPage] 消息详情:', {
+              historyMessages: data.historyMessages?.map((m: ChatMessage) => ({
+                id: m.id, 
+                content: m.content, 
+                senderId: m.senderId, 
+                receiverId: m.receiverId,
+                createTime: m.createTime,
+                createTimeDate: m.createTime ? new Date(m.createTime) : null
+              })) || [],
+              recentMessages: data.recentMessages?.map((m: ChatMessage) => ({
+                id: m.id, 
+                content: m.content, 
+                senderId: m.senderId, 
+                receiverId: m.receiverId,
+                createTime: m.createTime,
+                createTimeDate: m.createTime ? new Date(m.createTime) : null
+              })) || []
+            });
+            setHistoryMessages(data.historyMessages || []);
+            setRecentMessages(data.recentMessages || []);
+            // setHasHistoryDivider(data.hasHistoryDivider || false); // 不再需要，因为直接使用historyMessages.length > 0判断
           }
         } catch (error) {
           console.error('获取聊天历史失败:', error);
@@ -150,15 +279,15 @@ const ChatPage: React.FC = () => {
         }
       };
       fetchChatHistory();
-      // 🔧 修复数据丢失问题：延迟标记已读，让用户先看到消息
-      // 在用户进入聊天页面3秒后再标记为已读，确保用户看到了离线消息
-      setTimeout(() => {
-        markMessagesAsRead(selectedUser.userId).then(() => {
-          getUnreadMap().then(setUnreadMap);
-        });
-      }, 3000); // 3秒延迟
+      // 🔧 移除自动标记已读逻辑，改为只在用户真正查看消息时才标记已读
+      // 自动标记会导致其他用户的未读提示错误消失
+      // setTimeout(() => {
+      //   markMessagesAsRead(selectedUser.userId).then(() => {
+      //     getUnreadMap().then(setUnreadMap);
+      //   });
+      // }, 3000); // 3秒延迟
     }
-  }, [selectedUser, loginTime]);
+        }, [selectedUser, loginTime]);
 
   // 滚动到底部
   useEffect(() => {
@@ -266,9 +395,32 @@ const ChatPage: React.FC = () => {
                     user={user}
                     selected={selectedUser?.userId === user.userId}
                     onClick={() => {
+                      console.log('👤 [ChatPage] 用户点击选择聊天对象:', {
+                        userId: user.userId,
+                        userName: user.username,
+                        previousActivePeer: activePeerRef.current,
+                        currentUserId,
+                        timestamp: new Date().toLocaleTimeString()
+                      });
+                      
                       setSelectedUser(user);
                       activePeerRef.current = user.userId;
+                      console.log('🔄 [ChatPage] activePeer更新为:', user.userId);
                       chatService.setActiveSession(user.userId).catch(() => {});
+                      
+                      // 🔧 手动标记已读：只在用户真正点击选择用户时才标记已读
+                      setTimeout(() => {
+                        console.log('📖 [ChatPage] 执行手动标记已读:', {
+                          userId: user.userId,
+                          timestamp: new Date().toLocaleTimeString()
+                        });
+                        markMessagesAsRead(user.userId).then(() => {
+                          console.log('✅ [ChatPage] 标记已读成功，更新unreadMap');
+                          getUnreadMap().then(setUnreadMap);
+                        }).catch(err => {
+                          console.error('❌ [ChatPage] 标记已读失败:', err);
+                        });
+                      }, 1000); // 1秒延迟，确保消息加载完成
                     }}
                   />
                 );
@@ -304,7 +456,10 @@ const ChatPage: React.FC = () => {
                 <div className="messages-list">
                   {historyMessages
                     .filter(message => message.messageType !== 'SYSTEM')
-                    .filter(message => !!selectedUser && (message.senderId === selectedUser.userId || message.receiverId === selectedUser.userId))
+                    .filter(message => !!selectedUser && (
+                      (message.senderId === currentUserId && message.receiverId === selectedUser.userId) ||
+                      (message.senderId === selectedUser.userId && message.receiverId === currentUserId)
+                    ))
                     .map((message) => (
                     <div
                       key={message.id ?? message.createTime ?? Math.random()}
@@ -313,22 +468,31 @@ const ChatPage: React.FC = () => {
                       <div className="message-content">
                         <div className="message-text">{message.content}</div>
                         <div className="message-time">
-                          {message.createTime ? new Date(message.createTime).toLocaleString() : ''}
+                          {message.createTime ? formatMessageTime(message.createTime) : ''}
                         </div>
                       </div>
                     </div>
                   ))}
                   {/* 只要historyMessages有内容就显示分割线 */}
-                  {historyMessages.length > 0 && (
+                  {historyMessages.length > 0 && recentMessages.length > 0 && (
                     <div className="history-divider">
                       <div className="divider-line"></div>
-                      <span className="divider-text">之前的聊天记录</span>
+                      <span className="divider-text">登录前的历史消息</span>
                       <div className="divider-line"></div>
+                    </div>
+                  )}
+                  {/* 调试信息 */}
+                  {historyMessages.length > 0 && (
+                    <div style={{fontSize: '12px', color: '#999', textAlign: 'center', margin: '5px 0'}}>
+                      历史消息: {historyMessages.length}条, 新消息: {recentMessages.length}条
                     </div>
                   )}
                   {recentMessages
                     .filter(message => message.messageType !== 'SYSTEM')
-                    .filter(message => !!selectedUser && (message.senderId === selectedUser.userId || message.receiverId === selectedUser.userId))
+                    .filter(message => !!selectedUser && (
+                      (message.senderId === currentUserId && message.receiverId === selectedUser.userId) ||
+                      (message.senderId === selectedUser.userId && message.receiverId === currentUserId)
+                    ))
                     .map((message) => (
                     <div
                       key={message.id ?? message.createTime ?? Math.random()}
@@ -342,7 +506,7 @@ const ChatPage: React.FC = () => {
                           )}
                         </div>
                         <div className="message-time">
-                          {message.createTime ? new Date(message.createTime).toLocaleString() : ''}
+                          {message.createTime ? formatMessageTime(message.createTime) : ''}
                           {message.isOfflineMessage && ' (离线时收到)'}
                         </div>
                       </div>
