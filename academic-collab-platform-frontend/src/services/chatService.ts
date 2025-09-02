@@ -44,29 +44,9 @@ chatApi.interceptors.request.use(
 );
 
 export const chatService = {
-  // 发送消息
-  async sendMessage(message: ChatMessage): Promise<any> {
-    try {
-      const response = await chatApi.post('/chat/send', {
-        receiverId: message.receiverId,
-        content: message.content,
-        messageType: message.messageType
-      });
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || '发送消息失败');
-    }
-  },
 
-  // 获取聊天历史
-  async getChatHistory(userId: number, limit: number = 50): Promise<any> {
-    try {
-      const response = await chatApi.get(`/chat/history/${userId}?limit=${limit}`);
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || '获取聊天历史失败');
-    }
-  },
+
+
 
   // 获取聊天历史（带缓存）
   async getChatHistoryWithCache(userId: number, limit: number = 50, loginTime?: number): Promise<any> {
@@ -122,10 +102,17 @@ export const chatService = {
     }
   },
 
-  // 获取所有用户及在线状态（兼容老接口，实际与getUserList一致）
-  async getAllUsersWithStatus(): Promise<ChatUser[]> {
-    return this.getUserList();
+  // 获取未读消息映射（按发送者分组）
+  async getUnreadMap(): Promise<any> {
+    try {
+      const response = await chatApi.get('/chat/unread-map');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || '获取未读消息映射失败');
+    }
   },
+
+
 
   // 设置用户在线/离线状态
   async setOnlineStatus(isOnline: boolean): Promise<any> {
@@ -158,22 +145,11 @@ export const chatService = {
   }
 };
 
-export const getUnreadCount = async () => {
-  const res = await axios.get('/api/chat/unread-count', {
-    headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
-  });
-  return res.data.data; // 假设返回的是数字
-};
+// 独立导出的函数，用于兼容旧的导入方式
+export const getUnreadMap = chatService.getUnreadMap.bind(chatService);
+export const markMessagesAsRead = chatService.markMessagesAsRead.bind(chatService);
 
-export const markMessagesAsRead = async (userId: number) => {
-  await axios.post(`/api/chat/mark-read/${userId}`, {}, {
-    headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
-  });
-};
+// 添加别名方法，用于兼容不同的调用方式
+export const getAllUsersWithStatus = chatService.getUserList.bind(chatService);
 
-export const getUnreadMap = async () => {
-  const res = await axios.get('/api/chat/unread-map', {
-    headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
-  });
-  return res.data.data as Record<number, number>;
-}; 
+ 

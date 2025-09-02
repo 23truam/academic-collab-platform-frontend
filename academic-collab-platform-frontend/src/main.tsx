@@ -25,8 +25,3 @@ axios.interceptors.request.use(config => {
   return config;
 });
 
-// 删除自动清理token和user的beforeunload事件，让token持久化
-// window.addEventListener('beforeunload', () => {
-//   localStorage.removeItem('token');
-//   localStorage.removeItem('user');
-// });

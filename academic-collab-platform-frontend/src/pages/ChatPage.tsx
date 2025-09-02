@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { chatService, ChatMessage, ChatUser, markMessagesAsRead, getUnreadMap } from '../services/chatService';
+import { chatService, ChatMessage, ChatUser, markMessagesAsRead, getUnreadMap, getAllUsersWithStatus } from '../services/chatService';
 import { websocketService } from '../services/websocketService';
 // import { authService } from '../services/authService'; // 如果需要的话可以取消注释
 import { beaconLogout } from '../utils/beaconLogout';
@@ -82,7 +82,7 @@ const ChatPage: React.FC = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const response = await chatService.getAllUsersWithStatus();
+        const response = await getAllUsersWithStatus();
         setUsers(response);
       } catch (error) {
         console.error('获取用户列表失败:', error);
