@@ -118,7 +118,7 @@ const ChatPage: React.FC = () => {
     });
   }, [unreadMap]);
 
-  // 连接WebSocket - 延迟连接，避免页面加载时就连接
+  // 🆕 智能WebSocket连接 - 检查是否已连接，避免重复连接
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
@@ -127,6 +127,15 @@ const ChatPage: React.FC = () => {
           setWsConnected(false);
           return;
         }
+        
+        // 🆕 检查WebSocket是否已经连接
+        if (websocketService.isConnectedToServer()) {
+          console.log('[ChatPage] WebSocket已连接，跳过重复连接');
+          setWsConnected(true);
+          return;
+        }
+        
+        console.log('[ChatPage] WebSocket未连接，开始建立连接...');
         websocketService
           .connect(currentUserId, (message) => {
             const activePeer = activePeerRef.current;

@@ -13,8 +13,9 @@ export const HeartbeatProvider: React.FC<HeartbeatProviderProps> = ({ children }
   // 从localStorage获取token
   const token = localStorage.getItem('token');
   
-  // 使用心跳hook，每5秒发送一次心跳（开发环境快速反馈）
-  useHeartbeat(token, 5000);
+  // 优化：每60秒发送一次心跳，配合 WebSocket 30秒心跳保活连接
+  // WebSocket 负责连接保活，HTTP 心跳主要维护用户业务状态
+  useHeartbeat(token, 60000);
 
   // 页面关闭或刷新时发送最后一次心跳
   useEffect(() => {

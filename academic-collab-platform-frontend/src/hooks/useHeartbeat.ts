@@ -4,9 +4,9 @@ import axios from 'axios';
 /**
  * 心跳机制Hook - 定时发送心跳包保持用户在线状态
  * @param token JWT token
- * @param interval 心跳间隔（毫秒），默认30秒
+ * @param interval 心跳间隔（毫秒），默认60秒（优化后）
  */
-export const useHeartbeat = (token: string | null, interval: number = 30000) => {
+export const useHeartbeat = (token: string | null, interval: number = 60000) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
